@@ -63,15 +63,67 @@ raise_aki/
 
 ---
 
-## Models
+## Results
 
-| Model | AUROC | Brier Score |
-|---|---|---|
-| Random Forest | **0.865** | 0.166 |
-| Gradient Boosting | 0.861 | **0.156** |
-| Logistic Regression | 0.846 | 0.163 |
+> Test set: 50 admissions (20% held-out, ordered split)  
+> AKI prevalence in test set: 34% (17/50)
+
+### ROC Curves
+
+![ROC Curves](results/roc_curves.png)
+
+### Calibration Curves
+
+Reliability diagrams show how well predicted probabilities match observed AKI rates.  
+Points close to the diagonal = well-calibrated model.
+
+![Calibration Curves](results/calibration_curves.png)
+
+### Confusion Matrices
+
+![Confusion Matrices](results/confusion_matrices.png)
+
+### Full Metrics (Test Set)
+
+| Model | AUROC | Brier ↓ | Sensitivity | Specificity | PPV | NPV |
+|---|---|---|---|---|---|---|
+| **Gradient Boosting** | 0.861 | **0.156** | **52.9%** | 97.0% | **90.0%** | **80.0%** |
+| Random Forest | **0.865** | 0.166 | 23.5% | **100%** | **100%** | 71.7% |
+| Logistic Regression | 0.846 | 0.163 | 41.2% | 93.9% | 77.8% | 75.6% |
+
+> **Reading the trade-offs:**  
+> - **Random Forest** achieves the highest AUROC and perfect PPV (zero false alarms) but misses many AKI cases (low sensitivity).  
+> - **Gradient Boosting** offers the best overall balance — best Brier score, reasonable sensitivity, and only 1 false alarm.  
+> - **Logistic Regression** is the most interpretable and competitive despite its simplicity.
 
 All models are **isotonic-calibrated** (Niculescu-Mizil & Caruana, ICML 2005) using 5-fold cross-validated calibration to ensure predicted probabilities are reliable.
+
+### SHAP Feature Importance (Gradient Boosting)
+
+![SHAP Summary](results/shap_summary.png)
+
+| Rank | Feature | Mean \|SHAP\| | Interpretation |
+|---|---|---|---|
+| 1 | `los_days` | 1.51 | Longer stays associated with higher AKI risk |
+| 2 | `baseline_creatinine` | 0.73 | Pre-existing kidney function |
+| 3 | `icu_los_days` | 0.43 | ICU severity proxy |
+| 4 | `egfr` | 0.39 | Estimated glomerular filtration rate |
+| 5 | `baseline_hemoglobin` | 0.32 | Anaemia as a risk factor |
+| 6 | `age` | 0.31 | Older patients at higher risk |
+| 7 | `admission_type_EW EMER.` | 0.25 | Emergency admission flag |
+| 8 | `mean_hr` | 0.22 | Haemodynamic instability |
+
+---
+
+## Models
+
+Three classifiers are trained and compared:
+
+| Model | Description |
+|---|---|
+| **Logistic Regression** | Regularised (L2, C=0.1), `class_weight="balanced"` — interpretable baseline |
+| **Random Forest** | 200 trees, max depth 6, `class_weight="balanced"` |
+| **Gradient Boosting** | 200 estimators, learning rate 0.05, max depth 4 |
 
 ---
 
@@ -108,7 +160,8 @@ After running, the `results/` folder contains:
 | `cohort.csv` | Extracted MIMIC-IV cohort (one row per admission) |
 | `model_scores.csv` | AUROC and Brier score for each model |
 | `roc_curves.png` | ROC curves for all 3 models |
-| `calibration_curves.png` | Reliability diagrams |
+| `calibration_curves.png` | Reliability diagrams (predicted prob vs observed rate) |
+| `confusion_matrices.png` | Confusion matrices for all 3 models |
 | `shap_summary.png` | Global SHAP feature importance (beeswarm) |
 | `shap_waterfall.png` | Local explanation for the highest-risk patient |
 | `shap_importance.csv` | Mean \|SHAP\| ranking table |
